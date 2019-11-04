@@ -259,5 +259,27 @@ namespace Tedd.NetworkMessageProtocol
             MessageObjectPool.Free(messageObject);
         }
 
+        /// <summary>
+        /// Get a MessageObject from pool for use for sending. Must be returned manually to pool after sending.
+        /// </summary>
+        /// <returns></returns>
+        public MessageObject AllocateMessageObject()
+        {
+            return MessageObjectPool.Allocate();
+        }
+
+        /// <summary>
+        /// Shortcut for common action: Allocate MessageObject, perform populate action, send and free it.
+        /// </summary>
+        /// <param name="populateAction">Action to populate MessageObject before sending it</param>
+        /// <returns></returns>
+        public async Task SendAsync(Action<MessageObject> populateAction)
+        {
+            var mo = AllocateMessageObject();
+            populateAction(mo);
+            await SendAsync(mo);
+            FreeMessageObject(mo);
+        }
+
     }
 }
