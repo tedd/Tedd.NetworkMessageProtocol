@@ -23,7 +23,8 @@ namespace Tedd.NetworkMessageProtocol
 
         public void Reset()
         {
-            Array.Clear(_data, 0, (int)_size);
+            //Array.Clear(_data, 0, (int)_size);
+            Array.Fill<byte>(_data, 0);
             _pos = 0;
             _size = 0;
             //SkipHeader();

@@ -29,6 +29,11 @@ namespace Tedd.NetworkMessageProtocol
         public event MessageObjectReceivedDelegate MessageObjectReceived;
         public event SocketEventDelegate Disconnected;
 
+        /// <summary>
+        /// Create client from existing socket
+        /// </summary>
+        /// <param name="logger"></param>
+        /// <param name="socket"></param>
         public NmpTcpClient(ILogger logger, Socket socket)
         {
             _logger = logger;
@@ -37,6 +42,12 @@ namespace Tedd.NetworkMessageProtocol
             _socket.NoDelay = false;
         }
 
+        /// <summary>
+        /// Create client connection to remote address and port
+        /// </summary>
+        /// <param name="logger"></param>
+        /// <param name="remoteAddress"></param>
+        /// <param name="remotePort"></param>
         public NmpTcpClient(ILogger logger, string remoteAddress, int remotePort)
         {
             _logger = logger;
@@ -57,6 +68,9 @@ namespace Tedd.NetworkMessageProtocol
             _logger.LogInformation($"Connection to {remoteAddress} ({ipAddr}) port {remotePort} established");
         }
 
+        /// <summary>
+        /// Close socket
+        /// </summary>
         public void Close()
         {
             if (_socket.Connected)
@@ -66,6 +80,22 @@ namespace Tedd.NetworkMessageProtocol
             }
         }
 
+        /// <summary>
+        /// Send MessageObject
+        /// </summary>
+        /// <param name="messageObject"></param>
+        /// <returns></returns>
+        public async Task<int> SendAsync(MessageObject messageObject)
+        {
+            return await SendAsync(messageObject.GetPacketMemory());
+        }
+
+        /// <summary>
+        /// Send raw data
+        /// </summary>
+        /// <remarks>Dangerous!</remarks>
+        /// <param name="memory"></param>
+        /// <returns></returns>
         public async Task<int> SendAsync(ReadOnlyMemory<byte> memory)
         {
             var total = 0;
@@ -94,7 +124,11 @@ namespace Tedd.NetworkMessageProtocol
             return total;
         }
 
-        public async Task ProcessPackets()
+        /// <summary>
+        /// Async read new packets until socket is disconnected
+        /// </summary>
+        /// <returns></returns>
+        public async Task ReadPacketsAsync()
         {
             if (_reading)
                 throw new Exception("Already reading from socket.");
@@ -215,5 +249,15 @@ namespace Tedd.NetworkMessageProtocol
         {
             _socket?.Dispose();
         }
+
+        /// <summary>
+        /// Return MessageObject to pool. This must be done when processing of incoming message object is completed.
+        /// </summary>
+        /// <param name="messageObject"></param>
+        public void FreeMessageObject(MessageObject messageObject)
+        {
+            MessageObjectPool.Free(messageObject);
+        }
+
     }
 }

@@ -83,7 +83,7 @@ namespace Tedd.NetworkMessageProtocol.Tests
                         MessageObject mo = null;
                         cs.ServerClient.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject) => { mo = messageObject; };
                         // Fire off background tasks
-                        var processPacketsTask = cs.ServerClient.ProcessPackets();
+                        var processPacketsTask = cs.ServerClient.ReadPacketsAsync();
 
                         // Write a packet to client
                         var stream = cs.Client.GetStream();
@@ -162,10 +162,10 @@ namespace Tedd.NetworkMessageProtocol.Tests
                 var listenTask = server.Listen(port);
                 Thread.Sleep(100); // Listen socket needs time to start
                 var client = new NmpTcpClient(_logger, "127.0.0.1", port);
-                var clientTask = client.ProcessPackets();
+                var clientTask = client.ReadPacketsAsync();
 
                 Assert.True(WaitFor(1000, () => serverClient != null));
-                var serverClientTasks = serverClient.ProcessPackets();
+                var serverClientTasks = serverClient.ReadPacketsAsync();
 
                 MessageObject smo = null;
                 MessageObject cmo = null;
@@ -217,10 +217,10 @@ namespace Tedd.NetworkMessageProtocol.Tests
                 var listenTask = server.Listen(port);
                 Thread.Sleep(100); // Listen socket needs time to start
                 var client = new NmpTcpClient(_logger, "127.0.0.1", port);
-                var clientTask = client.ProcessPackets();
+                var clientTask = client.ReadPacketsAsync();
 
                 Assert.True(WaitFor(1000, () => serverClient != null));
-                var serverClientTasks = serverClient.ProcessPackets();
+                var serverClientTasks = serverClient.ReadPacketsAsync();
 
                 MessageObject smo = null;
                 MessageObject cmo = null;
@@ -278,10 +278,10 @@ namespace Tedd.NetworkMessageProtocol.Tests
                 var listenTask = server.Listen(port);
                 Thread.Sleep(100); // Listen socket needs time to start
                 var client = new NmpTcpClient(_logger, "127.0.0.1", port);
-                var clientTask = client.ProcessPackets();
+                var clientTask = client.ReadPacketsAsync();
 
                 Assert.True(WaitFor(1000, () => serverClient != null));
-                var serverClientTasks = serverClient.ProcessPackets();
+                var serverClientTasks = serverClient.ReadPacketsAsync();
 
                 MessageObject smo = null;
                 MessageObject cmo = null;
@@ -328,10 +328,10 @@ namespace Tedd.NetworkMessageProtocol.Tests
                 var listenTask = server.Listen(port);
                 Thread.Sleep(100); // Listen socket needs time to start
                 var client = new NmpTcpClient(_logger, "127.0.0.1", port);
-                var clientTask = client.ProcessPackets();
+                var clientTask = client.ReadPacketsAsync();
 
                 Assert.True(WaitFor(1000, () => serverClient != null));
-                var serverClientTasks = serverClient.ProcessPackets();
+                var serverClientTasks = serverClient.ReadPacketsAsync();
 
 
                 var mos = new List<MessageObject>();

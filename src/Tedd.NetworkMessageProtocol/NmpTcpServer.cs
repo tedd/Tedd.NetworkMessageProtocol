@@ -28,6 +28,11 @@ namespace Tedd.NetworkMessageProtocol
         }
 
 
+        /// <summary>
+        /// Start listening for clients.
+        /// </summary>
+        /// <param name="port"></param>
+        /// <returns></returns>
         public async Task Listen(int port)
         {
             lock (_startStopLockObject)
@@ -75,6 +80,9 @@ namespace Tedd.NetworkMessageProtocol
             _logger.LogInformation($"Ended listening on port {Port}");
         }
 
+        /// <summary>
+        /// Stop listening for clients
+        /// </summary>
         public void Stop()
         {
             lock (_startStopLockObject)
