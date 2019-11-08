@@ -81,7 +81,7 @@ namespace Tedd.NetworkMessageProtocol.Tests
                     foreach (var cs in clients)
                     {
                         MessageObject mo = null;
-                        cs.ServerClient.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject) => { mo = messageObject; };
+                        cs.ServerClient.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject, ref bool free) => { mo = messageObject; };
                         // Fire off background tasks
                         var processPacketsTask = cs.ServerClient.ReadPacketsAsync();
 
@@ -161,7 +161,8 @@ namespace Tedd.NetworkMessageProtocol.Tests
                 server.NewConnection += (tcpServer, client) => { serverClient = client; };
                 var listenTask = server.Listen(port);
                 Thread.Sleep(100); // Listen socket needs time to start
-                var client = new NmpTcpClient(_logger, "127.0.0.1", port);
+                var client = new NmpTcpClient(_logger);
+                client.Connect("127.0.0.1", port);
                 var clientTask = client.ReadPacketsAsync();
 
                 Assert.True(WaitFor(1000, () => serverClient != null));
@@ -169,8 +170,8 @@ namespace Tedd.NetworkMessageProtocol.Tests
 
                 MessageObject smo = null;
                 MessageObject cmo = null;
-                serverClient.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject) => { smo = messageObject; };
-                client.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject) => { cmo = messageObject; };
+                serverClient.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject, ref bool free) => { smo = messageObject; };
+                client.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject, ref bool free) => { cmo = messageObject; };
 
                 {
                     var mo1 = new MessageObject();
@@ -216,7 +217,8 @@ namespace Tedd.NetworkMessageProtocol.Tests
                 server.NewConnection += (tcpServer, client) => { serverClient = client; };
                 var listenTask = server.Listen(port);
                 Thread.Sleep(100); // Listen socket needs time to start
-                var client = new NmpTcpClient(_logger, "127.0.0.1", port);
+                var client = new NmpTcpClient(_logger);
+                client.Connect("127.0.0.1", port);
                 var clientTask = client.ReadPacketsAsync();
 
                 Assert.True(WaitFor(1000, () => serverClient != null));
@@ -224,8 +226,8 @@ namespace Tedd.NetworkMessageProtocol.Tests
 
                 MessageObject smo = null;
                 MessageObject cmo = null;
-                serverClient.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject) => { smo = messageObject; };
-                client.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject) => { cmo = messageObject; };
+                serverClient.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject, ref bool free) => { smo = messageObject; };
+                client.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject, ref bool free) => { cmo = messageObject; };
 
                 var maxSize = (int)(Constants.MaxPacketBodySize / sizeof(long));
                 {
@@ -277,7 +279,8 @@ namespace Tedd.NetworkMessageProtocol.Tests
                 server.NewConnection += (tcpServer, client) => { serverClient = client; };
                 var listenTask = server.Listen(port);
                 Thread.Sleep(100); // Listen socket needs time to start
-                var client = new NmpTcpClient(_logger, "127.0.0.1", port);
+                var client = new NmpTcpClient(_logger);
+                client.Connect("127.0.0.1", port);
                 var clientTask = client.ReadPacketsAsync();
 
                 Assert.True(WaitFor(1000, () => serverClient != null));
@@ -285,8 +288,8 @@ namespace Tedd.NetworkMessageProtocol.Tests
 
                 MessageObject smo = null;
                 MessageObject cmo = null;
-                serverClient.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject) => { smo = messageObject; };
-                client.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject) => { cmo = messageObject; };
+                serverClient.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject, ref bool free) => { smo = messageObject; };
+                client.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject, ref bool free) => { cmo = messageObject; };
 
                 var maxSizes = new int[] { 0, 1, 5, _random.Next(1, 255), _random.Next(1, 255), _random.Next(1, 255), _random.Next(1, 255) };
                 //var maxSize = (int) (CommunicationConstants.MaxPacketBodySize / sizeof(long)) ;
@@ -327,7 +330,8 @@ namespace Tedd.NetworkMessageProtocol.Tests
                 server.NewConnection += (tcpServer, client) => { serverClient = client; };
                 var listenTask = server.Listen(port);
                 Thread.Sleep(100); // Listen socket needs time to start
-                var client = new NmpTcpClient(_logger, "127.0.0.1", port);
+                var client = new NmpTcpClient(_logger);
+                client.Connect("127.0.0.1", port);
                 var clientTask = client.ReadPacketsAsync();
 
                 Assert.True(WaitFor(1000, () => serverClient != null));
@@ -335,7 +339,7 @@ namespace Tedd.NetworkMessageProtocol.Tests
 
 
                 var mos = new List<MessageObject>();
-                serverClient.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject) => { mos.Add(messageObject); };
+                serverClient.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject, ref bool free) => { mos.Add(messageObject); };
                 //client.MessageObjectReceived += (NPTcpClient client, MessageObject messageObject) => { cmo = messageObject; };
 
                 var maxSizes = new int[] { 0, 1, 5, _random.Next(1, 255), _random.Next(1, 255), _random.Next(1, 255), _random.Next(1, 255) };

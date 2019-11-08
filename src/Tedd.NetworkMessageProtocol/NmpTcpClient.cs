@@ -17,12 +17,18 @@ namespace Tedd.NetworkMessageProtocol
     public class NmpTcpClient : IDisposable
     {
         private readonly ILogger _logger;
-        private readonly Socket _socket;
+        private Socket _socket;
         public IPEndPoint RemoteIPEndPoint { get; private set; }
         private bool _reading = false;
         public static ObjectPool<MessageObject> MessageObjectPool = new ObjectPool<MessageObject>(() => new MessageObject(), o => o.Reset(), 100);
 
-        public delegate void MessageObjectReceivedDelegate(NmpTcpClient client, MessageObject messageObject);
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="client"></param>
+        /// <param name="messageObject"></param>
+        /// <param name="autoFree">Automatically free MessageObject back to pool after event has fired.</param>
+        public delegate void MessageObjectReceivedDelegate(NmpTcpClient client, MessageObject messageObject, ref bool autoFree);
 
         public delegate void SocketEventDelegate(NmpTcpClient client);
 
@@ -42,15 +48,18 @@ namespace Tedd.NetworkMessageProtocol
             _socket.NoDelay = false;
         }
 
+        public NmpTcpClient(ILogger logger)
+        {
+            _logger = logger;
+        }
+
         /// <summary>
         /// Create client connection to remote address and port
         /// </summary>
-        /// <param name="logger"></param>
         /// <param name="remoteAddress"></param>
         /// <param name="remotePort"></param>
-        public NmpTcpClient(ILogger logger, string remoteAddress, int remotePort)
+        public void Connect(string remoteAddress, int remotePort)
         {
-            _logger = logger;
             _logger.LogInformation($"Establishing connection to {remoteAddress} port {remotePort}");
             IPAddress ipAddr;
             if (!IPAddress.TryParse(remoteAddress, out ipAddr))
@@ -59,10 +68,11 @@ namespace Tedd.NetworkMessageProtocol
                 ipAddr = ipHost.AddressList[0];
             }
 
+            if (_socket != null)
+                throw new Exception("Connect called twice.");
+
             IPEndPoint endPoint = new IPEndPoint(ipAddr, remotePort);
-
             _socket = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-
             _socket.NoDelay = false;
             _socket.Connect(endPoint);
             _logger.LogInformation($"Connection to {remoteAddress} ({ipAddr}) port {remotePort} established");
@@ -81,21 +91,21 @@ namespace Tedd.NetworkMessageProtocol
         }
 
         /// <summary>
-        /// Send MessageObject
+        /// Send MessageObject.
         /// </summary>
         /// <param name="messageObject"></param>
-        /// <returns></returns>
+        /// <returns>Bytes sent</returns>
         public async Task<int> SendAsync(MessageObject messageObject)
         {
             return await SendAsync(messageObject.GetPacketMemory());
         }
 
         /// <summary>
-        /// Send raw data
+        /// Send raw data.
         /// </summary>
-        /// <remarks>Dangerous!</remarks>
+        /// <remarks>Dangerous! Malformed data will prevent packet reassembly on consecutive packets.</remarks>
         /// <param name="memory"></param>
-        /// <returns></returns>
+        /// <returns>Bytes sent</returns>
         public async Task<int> SendAsync(ReadOnlyMemory<byte> memory)
         {
             var total = 0;
@@ -221,9 +231,14 @@ namespace Tedd.NetworkMessageProtocol
                     {
                         // Trigger received packet
                         mo.Seek(0, SeekOrigin.Begin);
-                        MessageObjectReceived?.Invoke(this, mo);
-                        // Get fresh object
-                        mo = MessageObjectPool.Allocate();
+                        bool autoFree = false;
+                        MessageObjectReceived?.Invoke(this, mo, ref autoFree);
+                        if (autoFree)
+                            // Reuse current object
+                            mo.Reset();
+                        else
+                            // Get fresh object
+                            mo = MessageObjectPool.Allocate();
                     }
 
                     // Move buffer to this pos
