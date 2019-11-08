@@ -162,7 +162,7 @@ namespace Tedd.NetworkMessageProtocol.Tests
                 var listenTask = server.Listen(port);
                 Thread.Sleep(100); // Listen socket needs time to start
                 var client = new NmpTcpClient(_logger);
-                client.Connect("127.0.0.1", port);
+                client.ConnectAsync("127.0.0.1", port).Wait();
                 var clientTask = client.ReadPacketsAsync();
 
                 Assert.True(WaitFor(1000, () => serverClient != null));
@@ -218,7 +218,7 @@ namespace Tedd.NetworkMessageProtocol.Tests
                 var listenTask = server.Listen(port);
                 Thread.Sleep(100); // Listen socket needs time to start
                 var client = new NmpTcpClient(_logger);
-                client.Connect("127.0.0.1", port);
+                client.ConnectAsync("127.0.0.1", port).Wait();
                 var clientTask = client.ReadPacketsAsync();
 
                 Assert.True(WaitFor(1000, () => serverClient != null));
@@ -280,7 +280,7 @@ namespace Tedd.NetworkMessageProtocol.Tests
                 var listenTask = server.Listen(port);
                 Thread.Sleep(100); // Listen socket needs time to start
                 var client = new NmpTcpClient(_logger);
-                client.Connect("127.0.0.1", port);
+                client.ConnectAsync("127.0.0.1", port).Wait();
                 var clientTask = client.ReadPacketsAsync();
 
                 Assert.True(WaitFor(1000, () => serverClient != null));
@@ -331,7 +331,7 @@ namespace Tedd.NetworkMessageProtocol.Tests
                 var listenTask = server.Listen(port);
                 Thread.Sleep(100); // Listen socket needs time to start
                 var client = new NmpTcpClient(_logger);
-                client.Connect("127.0.0.1", port);
+                client.ConnectAsync("127.0.0.1", port).Wait();
                 var clientTask = client.ReadPacketsAsync();
 
                 Assert.True(WaitFor(1000, () => serverClient != null));

@@ -58,7 +58,7 @@ namespace Tedd.NetworkMessageProtocol
         /// </summary>
         /// <param name="remoteAddress"></param>
         /// <param name="remotePort"></param>
-        public void Connect(string remoteAddress, int remotePort)
+        public async Task ConnectAsync(string remoteAddress, int remotePort)
         {
             _logger.LogInformation($"Establishing connection to {remoteAddress} port {remotePort}");
             IPAddress ipAddr;
@@ -74,7 +74,7 @@ namespace Tedd.NetworkMessageProtocol
             IPEndPoint endPoint = new IPEndPoint(ipAddr, remotePort);
             _socket = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             _socket.NoDelay = false;
-            _socket.Connect(endPoint);
+            await _socket.ConnectAsync(endPoint);
             _logger.LogInformation($"Connection to {remoteAddress} ({ipAddr}) port {remotePort} established");
         }
 
@@ -85,7 +85,7 @@ namespace Tedd.NetworkMessageProtocol
         {
             if (_socket.Connected)
             {
-                _socket.Shutdown(SocketShutdown.Both);
+                _socket.Shutdown(SocketShutdown.Receive);
                 _socket.Close(100);
             }
         }
