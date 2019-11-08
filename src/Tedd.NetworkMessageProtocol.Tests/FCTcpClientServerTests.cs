@@ -98,7 +98,7 @@ namespace Tedd.NetworkMessageProtocol.Tests
                         Assert.True(WaitFor(1000, () => mo != null));
 
                         // Check packet
-                        Assert.Equal(header.Length + body.Length, mo.Size);
+                        Assert.Equal(header.Length + body.Length, mo.RawSize);
                         Assert.Equal(header.Length + body.Length, mo.PacketSizeAccordingToHeader);
                         mo.Seek(0, SeekOrigin.Begin);
                         mo.SkipHeader();
@@ -176,14 +176,13 @@ namespace Tedd.NetworkMessageProtocol.Tests
                 {
                     var mo1 = new MessageObject();
                     mo1.MessageType = 10;
-                    mo1.SkipHeader();
                     mo1.Write(1234);
                     client.SendAsync(mo1.GetPacketMemory()).Wait();
 
                     Assert.True(WaitFor(100, () => smo != null));
 
                     Assert.Equal(10, smo.MessageType);
-                    Assert.Equal(mo1.Size, smo.Size);
+                    Assert.Equal(mo1.RawSize, smo.RawSize);
                     Assert.Equal(mo1.PacketSizeAccordingToHeader, smo.PacketSizeAccordingToHeader);
                     smo.SkipHeader();
                     Assert.Equal(1234, smo.ReadInt32());
@@ -234,7 +233,7 @@ namespace Tedd.NetworkMessageProtocol.Tests
                     var mo1 = new MessageObject();
                     mo1.MessageType = 10;
                     mo1.SkipHeader();
-                    Assert.Equal(4, mo1.Position);
+                    Assert.Equal(4, mo1.RawPosition);
                     for (var i = 0; i < maxSize; i++)
                         mo1.Write((long)i);
                     client.SendAsync(mo1.GetPacketMemory()).Wait();
@@ -297,18 +296,17 @@ namespace Tedd.NetworkMessageProtocol.Tests
                 {
                     var mo1 = new MessageObject();
                     mo1.MessageType = (byte)maxSize;
-                    mo1.SkipHeader();
-                    Assert.Equal(4, mo1.Position);
+                    Assert.Equal(4, mo1.RawPosition);
                     for (var i = 0; i < maxSize; i++)
                         mo1.Write((byte)i);
                     var mem = mo1.GetPacketMemory();
-                    for (var i = 0; i < mo1.Size; i++)
+                    for (var i = 0; i < mo1.RawSize; i++)
                     {
-                        Thread.Sleep(_random.Next(0, 10));
+                        Thread.Sleep(_random.Next(0, 50));
                         client.SendAsync(mem.Slice(i, 1)).Wait();
                     }
 
-                    Assert.True(WaitFor(1000000, () => smo != null));
+                    Assert.True(WaitFor(10_000, () => smo != null));
 
                     Assert.Equal(maxSize, smo.MessageType);
                     Assert.Equal(mo1.Size, smo.Size);
@@ -351,7 +349,7 @@ namespace Tedd.NetworkMessageProtocol.Tests
                     var mo1 = new MessageObject();
                     mo1.MessageType = (byte)i;
                     mo1.SkipHeader();
-                    Assert.Equal(4, mo1.Position);
+                    Assert.Equal(4, mo1.RawPosition);
                     for (var i2 = 0; i2 < maxSize; i2++)
                         mo1.Write((byte)unchecked((byte)i2 + i));
                     var mem = mo1.GetPacketMemory();
@@ -369,7 +367,7 @@ namespace Tedd.NetworkMessageProtocol.Tests
                     var mo = mos[i];
                     var maxSize = maxSizes[i];
                     Assert.Equal(i, mo.MessageType);
-                    Assert.Equal(maxSize + Constants.MaxPacketHeaderSize, mo.Size);
+                    Assert.Equal(maxSize , mo.Size);
                     Assert.Equal(maxSize + Constants.MaxPacketHeaderSize, mo.PacketSizeAccordingToHeader);
                     mo.SkipHeader();
                     for (var i2 = 0; i2 < maxSize; i2++)

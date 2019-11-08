@@ -90,6 +90,7 @@ namespace Tedd.NetworkMessageProtocol
             }
         }
 
+
         /// <summary>
         /// Send MessageObject.
         /// </summary>
@@ -211,23 +212,24 @@ namespace Tedd.NetworkMessageProtocol
                             break;
 
                         // Write header to packet
-                        mo.Seek(0, SeekOrigin.Begin);
-                        mo.Write(buffer.Slice(0, Constants.MaxPacketHeaderSize));
+                        mo.RawSeek(0, SeekOrigin.Begin);
+                        mo.RawWrite(buffer.Slice(0, Constants.MaxPacketHeaderSize));
                         // Move buffer past header
                         buffer = buffer.Slice(Constants.MaxPacketHeaderSize);
                     }
 
                     // How much are we missing before packet is complete?
                     var packetSize = mo.PacketSizeAccordingToHeader;
-                    var size = packetSize - mo.Size;
+                    var remaining = packetSize - mo.RawSize;
                     // Remainder we can add
-                    size = Math.Min(size, (int)buffer.Length);
+                    remaining = Math.Min(remaining, (int)buffer.Length);
 
                     // Write as much as we can from buffer into packet
-                    mo.Write(buffer.Slice(0, size));
+                    if (remaining > 0)
+                        mo.RawWrite(buffer.Slice(0, remaining));
 
                     // Do we have a full packet?
-                    if (mo.Size == packetSize)
+                    if (mo.RawSize == packetSize)
                     {
                         // Trigger received packet
                         mo.Seek(0, SeekOrigin.Begin);
@@ -242,7 +244,7 @@ namespace Tedd.NetworkMessageProtocol
                     }
 
                     // Move buffer to this pos
-                    buffer = buffer.Slice(size);
+                    buffer = buffer.Slice(remaining);
                     // Empty buffer? Signal we want more
                     if (buffer.Length == 0)
                         break;
@@ -288,13 +290,29 @@ namespace Tedd.NetworkMessageProtocol
         /// </summary>
         /// <param name="populateAction">Action to populate MessageObject before sending it</param>
         /// <returns></returns>
-        public async Task SendAsync(Action<MessageObject> populateAction)
+        public async Task<int> SendAsync(Action<MessageObject> populateAction)
         {
             var mo = AllocateMessageObject();
             populateAction(mo);
-            await SendAsync(mo);
+            var ret = await SendAsync(mo);
             FreeMessageObject(mo);
+            return ret;
         }
 
+        /// <summary>
+        /// Shortcut for common action: Allocate MessageObject, perform populate action, send and free it.
+        /// </summary>
+        /// <param name="messageType">MessageType</param>
+        /// <param name="populateAction">Action to populate MessageObject before sending it</param>
+        /// <returns></returns>
+        public async Task<int> SendAsync(byte messageType, Action<MessageObject> populateAction)
+        {
+            var mo = AllocateMessageObject();
+            mo.MessageType = messageType;
+            populateAction(mo);
+            var ret = await SendAsync(mo);
+            FreeMessageObject(mo);
+            return ret;
+        }
     }
 }

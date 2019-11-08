@@ -14,26 +14,31 @@ namespace Tedd.NetworkMessageProtocol
         private readonly Memory<byte> _dataRaw;
         private Int32 _pos = 0;
         private Int32 _size = 0;
+        private Int32 _rawPos = 0;
 
         public MessageObject()
         {
             _data = new byte[Constants.MaxPacketSize];
             _dataRaw = new Memory<Byte>(_data);
+            SkipHeader();
         }
 
         public void Reset()
         {
             //Array.Clear(_data, 0, (int)_size);
             Array.Fill<byte>(_data, 0);
+            _rawPos = 0;
             _pos = 0;
             _size = 0;
-            //SkipHeader();
+            SkipHeader();
         }
 
         public void SkipHeader()
         {
+            // Ensure we are past header
             if (_pos < Constants.MaxPacketHeaderSize)
                 _pos = Constants.MaxPacketHeaderSize;
+            // Ensure size is at least header
             if (_size < Constants.MaxPacketHeaderSize)
                 _size = Constants.MaxPacketHeaderSize;
         }
@@ -48,58 +53,133 @@ namespace Tedd.NetworkMessageProtocol
             return new ReadOnlyMemory<Byte>(_data, 0, (int)_size);
         }
 
+        /// <summary>
+        /// Set message type for MessageObject. This is a byte that can be used to determine what the MessageObject contains.
+        /// </summary>
         public byte MessageType
         {
             get => _dataRaw.Span[3];
             set => _dataRaw.Span[3] = value;
         }
 
+        /// <summary>
+        /// Size of MessageObject according to data located in header
+        /// </summary>
         public Int32 PacketSizeAccordingToHeader
         {
             get => (Int32)(_dataRaw.Span[0] | _dataRaw.Span[1] << 8 * 1 | _dataRaw.Span[2] << 8 * 2);
         }
 
+        public void RawSyncFromHeader()
+        {
+            _size = PacketSizeAccordingToHeader;
+        }
 
+
+        /// <summary>
+        /// Current position
+        /// </summary>
         public Int32 Position
+        {
+            get => _pos - Constants.MaxPacketHeaderSize;
+        }
+        /// <summary>
+        /// Current raw position
+        /// </summary>
+        public Int32 RawPosition
         {
             get => _pos;
         }
 
+        /// <summary>
+        /// Size of MessageObject payload
+        /// </summary>
         public Int32 Size
+        {
+            get => _size - Constants.MaxPacketHeaderSize;
+        }
+
+        /// <summary>
+        /// Size of whole MessageObject
+        /// </summary>
+        public Int32 RawSize
         {
             get => _size;
         }
-
-        public bool HasHeader
+        /// <summary>
+        /// Determine if object has header. Used 
+        /// </summary>
+        internal bool HasHeader
         {
-            get => _size >= Constants.MaxPacketHeaderSize;
+            get => _size >= Constants.MaxPacketHeaderSize && PacketSizeAccordingToHeader >= Constants.MaxPacketHeaderSize;
         }
 
+        #region Seek
+        /// <summary>
+        /// Seek to a position in payload of MessageObject
+        /// </summary>
+        /// <param name="pos"></param>
+        /// <param name="origin"></param>
         public void Seek(int pos, SeekOrigin origin)
         {
-            int nPos = _pos;
+            int nPos = _pos - Constants.MaxPacketHeaderSize;
+            var nSize = _size - Constants.MaxPacketHeaderSize;
             if (origin == SeekOrigin.Begin)
                 nPos = 0;
             else if (origin == SeekOrigin.Current)
-                nPos = _pos;
+                nPos = _pos - Constants.MaxPacketHeaderSize;
+            else if (origin == SeekOrigin.End)
+                nPos = (Int32)(_size - Constants.MaxPacketHeaderSize - 1);
+
+            nPos = nPos + pos;
+
+            if ((nPos >= nSize && !(nPos == 0 && nSize == 0)) || nPos < 0)
+                throw new IndexOutOfRangeException($"New position {nPos} outside of 0-{nSize - 1}.");
+
+            _pos = (Int32)nPos + Constants.MaxPacketHeaderSize;
+        }
+        /// <summary>
+        /// Seek to a position in payload of MessageObject
+        /// </summary>
+        /// <param name="pos"></param>
+        /// <param name="origin"></param>
+        public void RawSeek(int pos, SeekOrigin origin)
+        {
+            int nPos = _rawPos;
+            var nSize = _size;
+            if (origin == SeekOrigin.Begin)
+                nPos = 0;
+            else if (origin == SeekOrigin.Current)
+                nPos = _rawPos;
             else if (origin == SeekOrigin.End)
                 nPos = (Int32)(_size - 1);
 
             nPos = nPos + pos;
 
-            if ((nPos >= _size && !(nPos == 0 && _size == 0)) || nPos < 0)
-                throw new IndexOutOfRangeException($"New position {nPos} outside of 0-{_size - 1}.");
+            if ((nPos >= nSize && !(nPos == 0 && nSize == 0)) || nPos < 0)
+                throw new IndexOutOfRangeException($"New position {nPos} outside of 0-{nSize - 1}.");
 
-            _pos = (Int32)nPos;
+            _rawPos = (Int32)nPos;
         }
+        #endregion
 
-        private void CheckWriteOverflow(Int32 i)
+        #region CheckOverflow
+        private void CheckWriteOverflow(int i, bool updateSize = true)
         {
-            if (_pos + i > Constants.MaxPacketBodySize)
+            if (_pos + i > Constants.MaxPacketSize)
                 throw new IndexOutOfRangeException("Packet size would overflow, write prohibited.");
 
             // Increase size if _pos pushes past size
-            _size = (Int32)Math.Max(_size + i, _pos + i);
+            if (updateSize)
+                _size = (Int32)Math.Max(_size, _pos + i);
+        }
+        private void RawCheckWriteOverflow(Int32 i)
+        {
+            if (_rawPos + i > Constants.MaxPacketSize)
+                throw new IndexOutOfRangeException("Packet size would overflow, write prohibited.");
+
+            // Increase size if _pos pushes past size
+            _size = (Int32)Math.Max(_size, _rawPos + i);
         }
 
         private void CheckReadOverflow(Int32 i)
@@ -107,21 +187,35 @@ namespace Tedd.NetworkMessageProtocol
             if (_pos + i > _size)
                 throw new IndexOutOfRangeException("Read would go past packet size, prohibited.");
         }
+        #endregion
 
-        public void Write(string text)
+        #region Write raw
+        public void RawWrite(byte[] b, int offset, Int32 length)
         {
-            var b = Encoding.UTF8.GetBytes(text);
-            CheckWriteOverflow(b.Length + sizeof(UInt16));
-            Write((UInt16)b.Length);
-            Write(b);
+            RawCheckWriteOverflow(b.Length);
+            Buffer.BlockCopy(b, offset, _data, _rawPos, length);
+            _rawPos += length;
         }
 
-        //        public void WriteWithSizeHeader(byte[] b, int offset, Int32 length)
-        //        {
-        //            CheckWriteOverflow(b.Length + 3);
-        //            WriteUInt24((uint) b.Length);
-        //            Write(b, offset, length);
-        //        }
+        public void RawWrite(in ReadOnlySequence<Byte> b)
+        {
+            var len = (Int32)b.Length;
+            RawCheckWriteOverflow(len);
+            b.CopyTo(_dataRaw.Span.Slice(_rawPos, len));
+            _rawPos += len;
+        }
+
+        public void RawWrite(in Memory<Byte> b)
+        {
+            var len = (Int32)b.Length;
+            RawCheckWriteOverflow(len);
+            b.Span.CopyTo(_dataRaw.Span.Slice(_rawPos, len));
+            _rawPos += len;
+        }
+
+        #endregion
+
+        #region Write datatypes
 
         public void Write(byte[] b, int offset, Int32 length)
         {
@@ -129,14 +223,6 @@ namespace Tedd.NetworkMessageProtocol
             Buffer.BlockCopy(b, offset, _data, _pos, length);
             _pos += length;
         }
-
-        //        public void WriteWithSizeHeader(in ReadOnlySequence<Byte> b)
-        //        {
-        //            var len = (Int32) b.Length;
-        //            CheckWriteOverflow(len + 3);
-        //            WriteUInt24((UInt32) len);
-        //            Write(b);
-        //        }
 
         public void Write(in ReadOnlySequence<Byte> b)
         {
@@ -146,13 +232,6 @@ namespace Tedd.NetworkMessageProtocol
             _pos += len;
         }
 
-        //        public void WriteWithSizeHeader(in Memory<Byte> b)
-        //        {
-        //            var len = (Int32) b.Length;
-        //            CheckWriteOverflow(len + 3);
-        //            WriteUInt24((uint) b.Length);
-        //            Write(b);
-        //        }
         public void Write(in Memory<Byte> b)
         {
             var len = (Int32)b.Length;
@@ -161,13 +240,20 @@ namespace Tedd.NetworkMessageProtocol
             _pos += len;
         }
 
+        public void Write(string text)
+        {
+            var b = Encoding.UTF8.GetBytes(text);
+            CheckWriteOverflow(b.Length + sizeof(UInt16), false);
+            Write((UInt16)b.Length);
+            Write(b);
+        }
+
         public void Write(byte b)
         {
             CheckWriteOverflow(sizeof(byte));
 
             _dataRaw.Span[_pos++] = b;
         }
-
 
         public void Write(Int16 i)
         {
@@ -290,7 +376,9 @@ namespace Tedd.NetworkMessageProtocol
             //                *((Double*) bb) = *(Double*) &f;
             //            }
         }
+        #endregion
 
+        #region Read datatypes
         public void ReadBytes(byte[] buffer, int offset, int length)
         {
             CheckReadOverflow(length);
@@ -436,5 +524,6 @@ namespace Tedd.NetworkMessageProtocol
             ReadBytes(buffer, 0, buffer.Length);
             return Encoding.UTF8.GetString(buffer);
         }
+        #endregion
     }
 }
