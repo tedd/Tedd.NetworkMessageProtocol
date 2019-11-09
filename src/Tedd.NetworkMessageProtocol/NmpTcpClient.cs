@@ -21,7 +21,7 @@ namespace Tedd.NetworkMessageProtocol
         public IPEndPoint RemoteIPEndPoint { get; private set; }
         private bool _reading = false;
         public static ObjectPool<MessageObject> MessageObjectPool = new ObjectPool<MessageObject>(() => new MessageObject(), o => o.Reset(), 100);
-
+        private bool _closing = false;
         /// <summary>
         /// 
         /// </summary>
@@ -60,6 +60,7 @@ namespace Tedd.NetworkMessageProtocol
         /// <param name="remotePort"></param>
         public async Task ConnectAsync(string remoteAddress, int remotePort)
         {
+
             _logger.LogInformation($"Establishing connection to {remoteAddress} port {remotePort}");
             IPAddress ipAddr;
             if (!IPAddress.TryParse(remoteAddress, out ipAddr))
@@ -70,6 +71,8 @@ namespace Tedd.NetworkMessageProtocol
 
             if (_socket != null)
                 throw new Exception("Connect called twice.");
+            if (_reading)
+                throw new Exception("Socket already open");
 
             IPEndPoint endPoint = new IPEndPoint(ipAddr, remotePort);
             _socket = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
@@ -83,6 +86,7 @@ namespace Tedd.NetworkMessageProtocol
         /// </summary>
         public void Close()
         {
+            _closing = true;
             if (_socket.Connected)
             {
                 _socket.Shutdown(SocketShutdown.Receive);
@@ -154,6 +158,7 @@ namespace Tedd.NetworkMessageProtocol
 
         private async Task FillPipeAsync(Socket socket, PipeWriter writer)
         {
+            _closing = false;
             const int minimumBufferSize = 1024 * 10000;
             var disconnectReason = string.Empty;
             try
@@ -198,7 +203,9 @@ namespace Tedd.NetworkMessageProtocol
             // Tell the PipeReader that there's no more data coming
             writer.Complete();
 
-            Disconnected?.Invoke(this, disconnectReason);
+            // If we called closing manually we won't call disconnect.
+            if (!_closing)
+                Disconnected?.Invoke(this, disconnectReason);
         }
 
         private async Task ReadPipeAsync(PipeReader reader)
