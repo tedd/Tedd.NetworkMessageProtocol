@@ -32,9 +32,8 @@ namespace Tedd.NetworkMessageProtocol.Tests
 
                 MessageObject smo = null;
                 MessageObject cmo = null;
-                sClient.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject, ref bool free) => { smo = messageObject; };
-                client.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject, ref bool free) => { cmo = messageObject; };
-
+                sClient.MessageObjectReceivedAsync += async (NmpTcpClient client, MessageObject messageObject, MessageObjectAction action) => { smo = messageObject; };
+                client.MessageObjectReceivedAsync += async (NmpTcpClient client, MessageObject messageObject, MessageObjectAction action) => { cmo = messageObject; };
 
                 client.SendAsync(3, o => o.Write("Hello")).Wait();
                 Assert.True(WaitFor(1000, () => smo != null));

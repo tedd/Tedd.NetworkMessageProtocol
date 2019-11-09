@@ -15,6 +15,7 @@ namespace Tedd.NetworkMessageProtocol
         private Int32 _pos = 0;
         private Int32 _size = 0;
         private Int32 _rawPos = 0;
+        internal readonly MessageObjectAction MessageObjectAction = new MessageObjectAction();
 
         public MessageObject()
         {

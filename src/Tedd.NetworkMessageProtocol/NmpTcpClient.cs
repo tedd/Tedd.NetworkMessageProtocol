@@ -22,18 +22,20 @@ namespace Tedd.NetworkMessageProtocol
         private bool _reading = false;
         public static ObjectPool<MessageObject> MessageObjectPool = new ObjectPool<MessageObject>(() => new MessageObject(), o => o.Reset(), 100);
         private bool _closing = false;
+
         /// <summary>
         /// 
         /// </summary>
         /// <param name="client"></param>
         /// <param name="messageObject"></param>
-        /// <param name="autoFree">Automatically free MessageObject back to pool after event has fired.</param>
-        public delegate void MessageObjectReceivedDelegate(NmpTcpClient client, MessageObject messageObject, ref bool autoFree);
+        /// <param name="action"></param>
+        /// <returns>True if object should be freed automatically</returns>
+        public delegate Task MessageObjectReceivedAsyncDelegate(NmpTcpClient client, MessageObject messageObject, MessageObjectAction action);
 
-        public delegate void DisconnectEventDelegate(NmpTcpClient client, string reason);
+        public delegate Task DisconnectAsyncEventDelegate(NmpTcpClient client, string reason);
 
-        public event MessageObjectReceivedDelegate MessageObjectReceived;
-        public event DisconnectEventDelegate Disconnected;
+        public event MessageObjectReceivedAsyncDelegate MessageObjectReceivedAsync;
+        public event DisconnectAsyncEventDelegate DisconnectedAsync;
 
         /// <summary>
         /// Create client from existing socket
@@ -204,8 +206,8 @@ namespace Tedd.NetworkMessageProtocol
             writer.Complete();
 
             // If we called closing manually we won't call disconnect.
-            if (!_closing)
-                Disconnected?.Invoke(this, disconnectReason);
+            if (!_closing && DisconnectedAsync != null)
+                await DisconnectedAsync.Invoke(this, disconnectReason);
         }
 
         private async Task ReadPipeAsync(PipeReader reader)
@@ -251,9 +253,10 @@ namespace Tedd.NetworkMessageProtocol
                     {
                         // Trigger received packet
                         mo.Seek(0, SeekOrigin.Begin);
-                        bool autoFree = false;
-                        MessageObjectReceived?.Invoke(this, mo, ref autoFree);
-                        if (autoFree)
+                        mo.MessageObjectAction.AutoFree = false;
+                        if (MessageObjectReceivedAsync != null)
+                            await MessageObjectReceivedAsync.Invoke(this, mo, mo.MessageObjectAction);
+                        if (mo.MessageObjectAction.AutoFree)
                             // Reuse current object
                             mo.Reset();
                         else

@@ -81,7 +81,7 @@ namespace Tedd.NetworkMessageProtocol.Tests
                     foreach (var cs in clients)
                     {
                         MessageObject mo = null;
-                        cs.ServerClient.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject, ref bool free) => { mo = messageObject; };
+                        cs.ServerClient.MessageObjectReceivedAsync += async (NmpTcpClient client, MessageObject messageObject, MessageObjectAction action) => { mo = messageObject; };
                         // Fire off background tasks
                         var processPacketsTask = cs.ServerClient.ReadPacketsAsync();
 
@@ -109,7 +109,7 @@ namespace Tedd.NetworkMessageProtocol.Tests
                     foreach (var cs in clients)
                     {
                         NmpTcpClient client = null;
-                        cs.ServerClient.Disconnected += c => { client = c; };
+                        cs.ServerClient.DisconnectedAsync += async (c,msg) => { client = c; };
 
                         cs.Client.Close();
 
@@ -170,8 +170,8 @@ namespace Tedd.NetworkMessageProtocol.Tests
 
                 MessageObject smo = null;
                 MessageObject cmo = null;
-                serverClient.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject, ref bool free) => { smo = messageObject; };
-                client.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject, ref bool free) => { cmo = messageObject; };
+                serverClient.MessageObjectReceivedAsync += async (NmpTcpClient client, MessageObject messageObject, MessageObjectAction action) => { smo = messageObject; };
+                client.MessageObjectReceivedAsync += async (NmpTcpClient client, MessageObject messageObject, MessageObjectAction action) => { cmo = messageObject; };
 
                 {
                     var mo1 = new MessageObject();
@@ -225,8 +225,8 @@ namespace Tedd.NetworkMessageProtocol.Tests
 
                 MessageObject smo = null;
                 MessageObject cmo = null;
-                serverClient.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject, ref bool free) => { smo = messageObject; };
-                client.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject, ref bool free) => { cmo = messageObject; };
+                serverClient.MessageObjectReceivedAsync += async (NmpTcpClient client, MessageObject messageObject, MessageObjectAction action) => { smo = messageObject; };
+                client.MessageObjectReceivedAsync += async (NmpTcpClient client, MessageObject messageObject, MessageObjectAction action) => { cmo = messageObject; };
 
                 var maxSize = (int)(Constants.MaxPacketBodySize / sizeof(long));
                 {
@@ -287,8 +287,8 @@ namespace Tedd.NetworkMessageProtocol.Tests
 
                 MessageObject smo = null;
                 MessageObject cmo = null;
-                serverClient.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject, ref bool free) => { smo = messageObject; };
-                client.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject, ref bool free) => { cmo = messageObject; };
+                serverClient.MessageObjectReceivedAsync += async (NmpTcpClient client, MessageObject messageObject, MessageObjectAction action) => { smo = messageObject; };
+                client.MessageObjectReceivedAsync += async (NmpTcpClient client, MessageObject messageObject, MessageObjectAction action) => { cmo = messageObject; };
 
                 var maxSizes = new int[] { 0, 1, 5, _random.Next(1, 255), _random.Next(1, 255), _random.Next(1, 255), _random.Next(1, 255) };
                 //var maxSize = (int) (CommunicationConstants.MaxPacketBodySize / sizeof(long)) ;
@@ -337,7 +337,7 @@ namespace Tedd.NetworkMessageProtocol.Tests
 
 
                 var mos = new List<MessageObject>();
-                serverClient.MessageObjectReceived += (NmpTcpClient client, MessageObject messageObject, ref bool free) => { mos.Add(messageObject); };
+                serverClient.MessageObjectReceivedAsync += async (NmpTcpClient client, MessageObject messageObject, MessageObjectAction action) => { mos.Add(messageObject); };
                 //client.MessageObjectReceived += (NPTcpClient client, MessageObject messageObject) => { cmo = messageObject; };
 
                 var maxSizes = new int[] { 0, 1, 5, _random.Next(1, 255), _random.Next(1, 255), _random.Next(1, 255), _random.Next(1, 255) };
