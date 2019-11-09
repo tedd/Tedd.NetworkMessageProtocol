@@ -13,7 +13,8 @@
     <PackageTags>network messaging</PackageTags>
     <Copyright>Tedd Hansen</Copyright>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <Version>0.0.7</Version>
+    <Version>0.0.8</Version>
+    <PackageReleaseNotes>Socket disconnect reason</PackageReleaseNotes>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net46|AnyCPU'">

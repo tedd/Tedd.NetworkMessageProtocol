@@ -30,10 +30,10 @@ namespace Tedd.NetworkMessageProtocol
         /// <param name="autoFree">Automatically free MessageObject back to pool after event has fired.</param>
         public delegate void MessageObjectReceivedDelegate(NmpTcpClient client, MessageObject messageObject, ref bool autoFree);
 
-        public delegate void SocketEventDelegate(NmpTcpClient client);
+        public delegate void DisconnectEventDelegate(NmpTcpClient client, string reason);
 
         public event MessageObjectReceivedDelegate MessageObjectReceived;
-        public event SocketEventDelegate Disconnected;
+        public event DisconnectEventDelegate Disconnected;
 
         /// <summary>
         /// Create client from existing socket
@@ -155,39 +155,50 @@ namespace Tedd.NetworkMessageProtocol
         private async Task FillPipeAsync(Socket socket, PipeWriter writer)
         {
             const int minimumBufferSize = 1024 * 10000;
-
-            while (true)
+            var disconnectReason = string.Empty;
+            try
             {
-                // Allocate minimum buffer from the PipeWriter
-                Memory<byte> memory = writer.GetMemory(minimumBufferSize);
-                try
+                while (true)
                 {
-                    int bytesRead = await socket.ReceiveAsync(memory, SocketFlags.None);
-                    if (bytesRead == 0)
+                    // Allocate minimum buffer from the PipeWriter
+                    Memory<byte> memory = writer.GetMemory(minimumBufferSize);
+                    try
+                    {
+                        int bytesRead = await socket.ReceiveAsync(memory, SocketFlags.None);
+                        if (bytesRead == 0)
+                            break;
+
+                        // Tell the PipeWriter how much was read from the Socket
+                        writer.Advance(bytesRead);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, $"Reading from remote socket {RemoteIPEndPoint.Address} {RemoteIPEndPoint.Port}");
                         break;
+                    }
 
-                    // Tell the PipeWriter how much was read from the Socket
-                    writer.Advance(bytesRead);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, $"Reading from remote socket {RemoteIPEndPoint.Address} {RemoteIPEndPoint.Port}");
-                    break;
-                }
+                    // Make the data available to the PipeReader
+                    FlushResult result = await writer.FlushAsync();
 
-                // Make the data available to the PipeReader
-                FlushResult result = await writer.FlushAsync();
-
-                if (result.IsCompleted)
-                {
-                    break;
+                    if (result.IsCompleted)
+                    {
+                        break;
+                    }
                 }
+            }
+            catch (SocketException socketException)
+            {
+                disconnectReason = $"{{socketException.ErrorCode}}/{socketException.SocketErrorCode} ({socketException.SocketErrorCode.ToString()}): {socketException.Message}";
+            }
+            catch (Exception exception)
+            {
+                disconnectReason = exception.Message;
             }
 
             // Tell the PipeReader that there's no more data coming
             writer.Complete();
 
-            Disconnected?.Invoke(this);
+            Disconnected?.Invoke(this, disconnectReason);
         }
 
         private async Task ReadPipeAsync(PipeReader reader)
