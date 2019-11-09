@@ -151,8 +151,8 @@ namespace Tedd.NetworkMessageProtocol
                 throw new Exception("Already reading from socket.");
             _reading = true;
             var pipe = new Pipe();
-            Task writing = FillPipeAsync(_socket, pipe.Writer);
-            Task reading = ReadPipeAsync(pipe.Reader);
+            var writing = FillPipeAsync(_socket, pipe.Writer);
+            var reading = ReadPipeAsync(pipe.Reader);
 
             await Task.WhenAll(reading, writing);
             _reading = false;

@@ -13,8 +13,8 @@
     <PackageTags>network messaging</PackageTags>
     <Copyright>Tedd Hansen</Copyright>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <Version>0.0.10</Version>
-    <PackageReleaseNotes>Async events</PackageReleaseNotes>
+    <Version>0.0.11</Version>
+    <PackageReleaseNotes>Write Span&lt;T&gt; instead of Memory&lt;T&gt;</PackageReleaseNotes>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net46|AnyCPU'">

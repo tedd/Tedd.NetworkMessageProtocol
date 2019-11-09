@@ -206,11 +206,20 @@ namespace Tedd.NetworkMessageProtocol
             _rawPos += len;
         }
 
-        public void RawWrite(in Memory<Byte> b)
+        //public void RawWrite(in Memory<Byte> b)
+        //{
+        //    var len = (Int32)b.Length;
+        //    RawCheckWriteOverflow(len);
+        //    b.Span.CopyTo(_dataRaw.Span.Slice(_rawPos, len));
+        //    _rawPos += len;
+        //}
+
+
+        public void RawWrite(in Span<Byte> b)
         {
             var len = (Int32)b.Length;
             RawCheckWriteOverflow(len);
-            b.Span.CopyTo(_dataRaw.Span.Slice(_rawPos, len));
+            b.CopyTo(_dataRaw.Span.Slice(_rawPos, len));
             _rawPos += len;
         }
 
@@ -233,11 +242,18 @@ namespace Tedd.NetworkMessageProtocol
             _pos += len;
         }
 
-        public void Write(in Memory<Byte> b)
+        //public void Write(in Memory<Byte> b)
+        //{
+        //    var len = (Int32)b.Length;
+        //    CheckWriteOverflow(len);
+        //    b.Span.CopyTo(_dataRaw.Span.Slice(_pos, len));
+        //    _pos += len;
+        //}
+        public void Write(in Span<Byte> b)
         {
             var len = (Int32)b.Length;
             CheckWriteOverflow(len);
-            b.Span.CopyTo(_dataRaw.Span.Slice(_pos, len));
+            b.CopyTo(_dataRaw.Span.Slice(_pos, len));
             _pos += len;
         }
 
