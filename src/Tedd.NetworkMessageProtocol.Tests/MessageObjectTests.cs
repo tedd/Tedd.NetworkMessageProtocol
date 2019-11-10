@@ -118,6 +118,8 @@ namespace Tedd.NetworkMessageProtocol.Tests
             mo.Write((Double)5.4321d);
             mo.WriteInt24(unchecked((Int32)0xFFFFFFFF));
             mo.WriteUInt24((UInt32)0xFFFFFFAA);
+            var guid = Guid.NewGuid();
+            mo.Write(guid);
 
 
             mo.Seek(0, SeekOrigin.Begin);
@@ -142,6 +144,7 @@ namespace Tedd.NetworkMessageProtocol.Tests
             Assert.Equal((Double)5.4321d, mo.ReadDouble());
             Assert.Equal(unchecked((Int32)0x00FFFFFF), mo.ReadInt24());
             Assert.Equal(unchecked((UInt32)0x00FFFFAA), mo.ReadUInt24());
+            Assert.Equal(guid, mo.ReadGuid());
         }
 
         [Fact]

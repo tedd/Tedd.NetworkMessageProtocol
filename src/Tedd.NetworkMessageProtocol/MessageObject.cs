@@ -215,7 +215,7 @@ namespace Tedd.NetworkMessageProtocol
         //}
 
 
-        public void RawWrite(in Span<Byte> b)
+        public void RawWrite(in ReadOnlySpan<Byte> b)
         {
             var len = (Int32)b.Length;
             RawCheckWriteOverflow(len);
@@ -249,7 +249,7 @@ namespace Tedd.NetworkMessageProtocol
         //    b.Span.CopyTo(_dataRaw.Span.Slice(_pos, len));
         //    _pos += len;
         //}
-        public void Write(in Span<Byte> b)
+        public void Write(in ReadOnlySpan<Byte> b)
         {
             var len = (Int32)b.Length;
             CheckWriteOverflow(len);
@@ -270,6 +270,11 @@ namespace Tedd.NetworkMessageProtocol
             CheckWriteOverflow(sizeof(byte));
 
             _dataRaw.Span[_pos++] = b;
+        }
+
+        public void Write(Guid guid)
+        {
+            Write(guid.ToByteArray());
         }
 
         public void Write(Int16 i)
@@ -409,6 +414,12 @@ namespace Tedd.NetworkMessageProtocol
             CheckReadOverflow(sizeof(byte));
 
             return _dataRaw.Span[_pos++];
+        }
+        public Guid ReadGuid()
+        {
+            var b = new byte[16];
+            ReadBytes(b, 0, 16);
+            return new Guid(b);
         }
 
         public Int16 ReadInt16()
