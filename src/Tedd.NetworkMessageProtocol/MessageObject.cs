@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -8,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Tedd.NetworkMessageProtocol
 {
-    public class MessageObject
+    public class MessageObject: Stream
     {
         private readonly byte[] _data;
         private readonly Memory<byte> _dataRaw;
@@ -80,14 +81,15 @@ namespace Tedd.NetworkMessageProtocol
         /// <summary>
         /// Current position
         /// </summary>
-        public Int32 Position
+        public override Int64 Position
         {
             get => _pos - Constants.MaxPacketHeaderSize;
+            set => Seek(value, SeekOrigin.Begin);
         }
         /// <summary>
         /// Current raw position
         /// </summary>
-        public Int32 RawPosition
+        public Int64 RawPosition
         {
             get => _pos;
         }
@@ -227,7 +229,7 @@ namespace Tedd.NetworkMessageProtocol
 
         #region Write datatypes
 
-        public void Write(byte[] b, int offset, Int32 length)
+        public override void Write(byte[] b, int offset, Int32 length)
         {
             CheckWriteOverflow(b.Length);
             Buffer.BlockCopy(b, offset, _data, _pos, length);
@@ -401,13 +403,16 @@ namespace Tedd.NetworkMessageProtocol
         #endregion
 
         #region Read datatypes
-        public void ReadBytes(byte[] buffer, int offset, int length)
+        public int ReadBytes(byte[] buffer, int offset, int length)
         {
             CheckReadOverflow(length);
 
             for (var i = offset; i < offset + length; i++)
                 buffer[i] = _dataRaw.Span[_pos++];
+
+            return length;
         }
+
 
         public byte ReadByte()
         {
@@ -415,6 +420,17 @@ namespace Tedd.NetworkMessageProtocol
 
             return _dataRaw.Span[_pos++];
         }
+
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void SetLength(long value)
+        {
+            throw new NotImplementedException();
+        }
+
         public Guid ReadGuid()
         {
             var b = new byte[16];
@@ -551,6 +567,22 @@ namespace Tedd.NetworkMessageProtocol
             var buffer = new byte[size];
             ReadBytes(buffer, 0, buffer.Length);
             return Encoding.UTF8.GetString(buffer);
+        }
+        #endregion
+
+        #region Stream
+        public override bool CanRead => true;
+        public override bool CanSeek => true;
+        public override bool CanWrite => true;
+        public override long Length => Size;
+
+        public override void Flush()
+        {
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            return ReadBytes(buffer,offset,count);
         }
         #endregion
     }
