@@ -5,7 +5,7 @@ VisualStudioVersion = 16.0.29411.108
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tedd.NetworkMessageProtocol", "Tedd.NetworkMessageProtocol\Tedd.NetworkMessageProtocol.csproj", "{943D861A-E749-444F-855E-246D4D761634}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tedd.NetworkMessageProtocol.Tests", "Tedd.NetworkMessageProtocol.Tests\Tedd.NetworkMessageProtocol.Tests.csproj", "{37DC5ACD-387E-4F13-B07A-8011EE79E6E5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tedd.NetworkMessageProtocol.Tests", "Tedd.NetworkMessageProtocol.Tests\Tedd.NetworkMessageProtocol.Tests.csproj", "{37DC5ACD-387E-4F13-B07A-8011EE79E6E5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

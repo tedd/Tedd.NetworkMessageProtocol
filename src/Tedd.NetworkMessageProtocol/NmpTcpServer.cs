@@ -9,22 +9,31 @@ using Microsoft.Extensions.Logging;
 
 namespace Tedd.NetworkMessageProtocol
 {
+    public class RequestDetails
+    {
+        public bool AcceptRequest = true;
+
+        public EndPoint RemoteEndpoint;
+    }
     public class NmpTcpServer : IDisposable
     {
         private readonly ILogger _logger;
+        private readonly int _maxClientPacketSize;
         private TcpListener _tcpListener;
         private CancellationTokenSource _cancellationTokenSource;
         public Int32 Port { get; private set; }
         public bool Listening { get; private set; }
         private readonly object _startStopLockObject = new Object();
 
+        public delegate void ConnectionRequestDelegate(NmpTcpServer server, RequestDetails request);
+        public event ConnectionRequestDelegate ConnectionRequest;
         public delegate void ConnectionDelegate(NmpTcpServer server, NmpTcpClient newClient);
-
         public event ConnectionDelegate NewConnection;
 
-        public NmpTcpServer(ILogger logger)
+        public NmpTcpServer(ILogger logger, int maxClientPacketSize = Constants.MessageObjectMaxSize)
         {
             _logger = logger;
+            _maxClientPacketSize = maxClientPacketSize;
         }
 
 
@@ -38,7 +47,7 @@ namespace Tedd.NetworkMessageProtocol
             lock (_startStopLockObject)
             {
                 Port = port;
-                _logger.LogInformation($"Starting listen on Tcp port {Port}");
+                _logger.LogInformation($"Starting listen on TCP port {Port}");
                 if (Listening)
                     throw new Exception("Already listening.");
                 Listening = true;
@@ -71,13 +80,38 @@ namespace Tedd.NetworkMessageProtocol
                 if (socket == null || _cancellationTokenSource.Token.IsCancellationRequested)
                     break;
 
+                var rd=new RequestDetails()
+                {
+                    RemoteEndpoint = socket.RemoteEndPoint,
+                    AcceptRequest = true
+                };
+                try
+                {
+                    ConnectionRequest?.Invoke(this, rd);
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogError(exception, "ConnectionRequest event handler threw exception. Disposing of socket safely, effectively ignoring incoming connection.");
+                    socket.Close(10);
+                    socket.Dispose();
+                    continue;
+                }
+
+                if (!rd.AcceptRequest)
+                {
+                    _logger.LogInformation($"Denied new client connection on TCP port {Port} from {((IPEndPoint)socket.RemoteEndPoint).Address}:{((IPEndPoint)socket.RemoteEndPoint).Port}");
+                    socket.Close(10);
+                    socket.Dispose();
+                    continue;
+                }
+
                 // Got new connection, create a protocol handler for it and fire off event
-                var client = new NmpTcpClient(_logger, socket);
-                _logger.LogInformation($"Accepted new client connection from {((IPEndPoint)socket.RemoteEndPoint).Address} port {((IPEndPoint)socket.RemoteEndPoint).Port}");
+                var client = new NmpTcpClient(_logger, socket, _maxClientPacketSize);
+                _logger.LogInformation($"Accepted new client connection on TCP port {Port} from {((IPEndPoint)socket.RemoteEndPoint).Address}:{((IPEndPoint)socket.RemoteEndPoint).Port}");
                 NewConnection?.Invoke(this, client);
             }
 
-            _logger.LogInformation($"Ended listening on port {Port}");
+            _logger.LogInformation($"Ended listening on TCP port {Port}");
         }
 
         /// <summary>
